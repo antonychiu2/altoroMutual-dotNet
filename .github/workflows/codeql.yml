@@ -16,7 +16,7 @@ on:
 jobs:
   scan-and-fix:
     name: Scan with CodeQL and fix with Mobb
-    runs-on: 'ubuntu-latest'
+    runs-on: windows-latest
     timeout-minutes: 360
     permissions:
       pull-requests: write
@@ -31,22 +31,27 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
           languages: ${{ matrix.language }}
-            
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-      
-      - name: Restore dependencies
-        run: dotnet restore
-      
-      - name: Build
-        run: dotnet build --no-restore
-                
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.0.5
+  
+      - name: setup-msbuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Restore Packages
+        run: nuget restore "Altoro Mutual.sln"
+
+      - name: Build solution
+        run: msbuild "Altoro Mutual.sln" -t:rebuild -property:Configuration=Release
+
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v2
         with:
@@ -54,7 +59,7 @@ jobs:
           output: results
 
       - name: Run Mobb on the findings and get fixes
-        if: always()
+        # if: always()
         uses: mobb-dev/action/review@v1.1
         with:
           report-file: results/${{ matrix.codeql_output_filename }}
